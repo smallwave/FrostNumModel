@@ -13,9 +13,9 @@ library(stringr)
 #************************************************************************************************
 # define var name
 #************************************************************************************************
-inputCvs <- "PointData.csv"
-tifFilePath  <- "F:/worktemp/Permafrost(FrostModel)/Data/MYD2003/"
-outvar       <- "PointDataLST"
+inputCvs <- "TableDataSnow.csv"
+tifFilePath  <- "F:/worktemp/Permafrost(FrostModel)/Data/MYD2010/"
+outvar       <- "TableDataSnowLST"
 #************************************************************************************************
 # read data
 #************************************************************************************************

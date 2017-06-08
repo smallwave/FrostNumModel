@@ -6,7 +6,7 @@
 #************************************************************************************************
 library(earth)
 library(hydroGOF)
-library(wavelets)
+library(waveslim)
 library(maptools)
 library(raster)
 library(stringr)
@@ -15,62 +15,38 @@ library(rgdal)
 #************************************************************************************************
 # define var name
 #************************************************************************************************
-inputCvs <- "PointDataLST.csv"
+inputCvs  <- "TableDataAll.csv"
 shapeFile <- "F:/worktemp/Permafrost(FrostModel)/Data/Position/Point.shp"
 
 #************************************************************************************************
 # read data  and   train model
 #************************************************************************************************
 shapefile   <- readShapeSpatial(shapeFile)
+
 InData      <- read.csv(inputCvs, head=TRUE,sep=",")
 InData      <- na.omit(InData)
-X1 <- InData$LST_D
-X2 <- InData$LST_N
-XY  <- (InData$LST_D + InData$LST_N)/2.0
-
-dataInput <- InData[(InData$Month < 4 | InData$Month > 9),]
-XC  <- (dataInput$LST_D + dataInput$LST_N)/2.0
-
-XY.haar <- modwt(XY, "haar", 3)
-XC.haar <- modwt(XC, "haar", 3)
-
-inD <- data.frame(cbind(XY.haar$d1,XY.haar$d2,XY.haar$d3,XY.haar$s3))
-names(inD) <- c("DD1","DD2","DD3","DS3")
-InData　<- data.frame(InData,inD)
-
-inD <- data.frame(cbind(XC.haar$d1,XC.haar$d2,XC.haar$d3,XC.haar$s3))
-names(inD) <- c("DD1","DD2","DD3","DS3")
-dataInput　<- data.frame(dataInput,inD)
-
-OBSInput <- InData[(InData$Month < 4 | InData$Month > 9),]
-
-plot(dataInput$DS3,OBSInput$DS3)
-
-plot(dataInput$DD1,OBSInput$DD1)
-
+# var
+X1          <- InData$LST_D
+X2          <- InData$LST_N
+XY          <- (InData$LST_D + InData$LST_N)/2.0
 
 # Haar
-X1.haar <- modwt(X1, "haar",3)
-X2.haar <- modwt(X2, "haar",3)
-
-X.haar <- dwt(X, "haar",3)
-
-inD <- data.frame(cbind(X1.haar$d1,X1.haar$d2,X1.haar$d3,X1.haar$s3,X2.haar$d1,X2.haar$d2,X2.haar$d3,X2.haar$s3))
-names(inD) <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3")
+X1.haar     <- modwt(X1, "haar",3)
+X2.haar     <- modwt(X2, "haar",3)
+XY.haar     <- modwt(XY, "haar",3)
 
 
-inD <- data.frame(cbind(X.haar$d1,X.haar$d2,X.haar$d3,X.haar$s3))
-names(inD) <- c("DD1","DD2","DD3","DS3")
+inD <- data.frame(cbind(X1.haar$d1,X1.haar$d2,X1.haar$d3,X1.haar$s3,
+                        X2.haar$d1,X2.haar$d2,X2.haar$d3,X2.haar$s3,
+                        XY.haar$d1,XY.haar$d2,XY.haar$d3,XY.haar$s3))
+names(inD) <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3","YD1","YD2","YD3","YS3")
+InData   　<- data.frame(InData,inD)
 
-InData　<- data.frame(InData,inD)
 
-dataInput　<- data.frame(dataInput,inD)
-#selVars <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3","GST","Height","NDVI","Lat")
-selVars <- c("DD1","DD2","DD3","DS3","GST")
+selVars    <- c("YD1","YD2","YD3","YS3","GST","Height","NDVI")
 
-dataSimulation <-  subset(dataInput,select = selVars)
-earth.mod      <- earth(GST ~ ., data = dataSimulation)
-
+dataSimulation <-  subset(InData,select = selVars)
+earth.mod      <-  earth(GST ~ ., data = dataSimulation)
 
 
 #************************************************************************************************
@@ -175,11 +151,11 @@ for(selDate in dataSeq)
   #************************************************************************************************
   # get snow  depths  
   #************************************************************************************************
-  rasterData    <- stack("F:/worktemp/Permafrost(FrostModel)/Data/snow depth/Tiff/2003/2003001.tif")
-  LSTExtract    <- extract(rasterData,shapefile,sp =TRUE)
-  LSTExtractDf  <- LSTExtract@data
-  names(LSTExtractDf)           <- c("Lon","Lat","Height","SnowDepth")
-  dataVerification$SnowDepth    <-  LSTExtractDf[,c("SnowDepth")]
+  # rasterData    <- stack("F:/worktemp/Permafrost(FrostModel)/Data/snow depth/Tiff/2003/2003001.tif")
+  # LSTExtract    <- extract(rasterData,shapefile,sp =TRUE)
+  # LSTExtractDf  <- LSTExtract@data
+  # names(LSTExtractDf)           <- c("Lon","Lat","Height","SnowDepth")
+  # dataVerification$SnowDepth    <-  LSTExtractDf[,c("SnowDepth")]
   
   #************************************************************************************************
   # construct out put
@@ -201,7 +177,7 @@ for(selDate in dataSeq)
   names(inD) <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3")
   
   inD <- data.frame(cbind(X.haar$d1,X.haar$d2,X.haar$d3,X.haar$s3))
-  names(inD) <- c("DD1","DD2","DD3","DS3")
+  names(inD) <- c("YD1","YD2","YD3","YS3")
   
   
   dataVerification　         <- data.frame(dataVerification,inD)
@@ -216,7 +192,7 @@ for(selDate in dataSeq)
   map.Polygon$GST<-as.numeric(as.character(map.Polygon$GST))
   coordinates(map.Polygon) <- ~Lon + Lat
   gridded(map.Polygon) <- TRUE
-  fname<-paste(tifOutPath,outName,"lstsnowCold",".tiff",sep='')
+  fname<-paste(tifOutPath,outName,"MARS6",".tiff",sep='')
   writeGDAL(map.Polygon,fname,drivername="GTiff", type="Float32", options=NULL)
   
 }
