@@ -26,24 +26,17 @@ shapefile   <- readShapeSpatial(shapeFile)
 InData      <- read.csv(inputCvs, head=TRUE,sep=",")
 InData      <- na.omit(InData)
 # var
-X1          <- InData$LST_D
-X2          <- InData$LST_N
 XY          <- (InData$LST_D + InData$LST_N)/2.0
 
 # Haar
-X1.haar     <- modwt(X1, "haar",3)
-X2.haar     <- modwt(X2, "haar",3)
 XY.haar     <- modwt(XY, "haar",3)
 
-
-inD <- data.frame(cbind(X1.haar$d1,X1.haar$d2,X1.haar$d3,X1.haar$s3,
-                        X2.haar$d1,X2.haar$d2,X2.haar$d3,X2.haar$s3,
-                        XY.haar$d1,XY.haar$d2,XY.haar$d3,XY.haar$s3))
-names(inD) <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3","YD1","YD2","YD3","YS3")
+inD <- data.frame(cbind(XY.haar$d1,XY.haar$d2,XY.haar$d3,XY.haar$s3))
+names(inD) <- c("YD1","YD2","YD3","YS3")
 InData   ¡¡<- data.frame(InData,inD)
 
 
-selVars    <- c("YD1","YD2","YD3","YS3","GST","Height","NDVI")
+selVars    <- c("YD1","YD2","YD3","YS3","GST","NDVI")
 
 dataSimulation <-  subset(InData,select = selVars)
 earth.mod      <-  earth(GST ~ ., data = dataSimulation)
@@ -82,24 +75,30 @@ ndviB  <- as.data.frame(ndviB)
 names(ndviA) <- c("M1","M2","M3","M4","M5","M6","M7","M8","M9","M10","M11","M12")
 names(ndviB) <- c("M1","M2","M3","M4","M5","M6","M7","M8","M9","M10","M11","M12")
 
-#************************************************************************************************
-# setfilepaths
-#************************************************************************************************
-tifInPath    <- "F:/worktemp/Permafrost(FrostModel)/Data/MYD2003/"
-snowInPath   <- "F:/worktemp/Permafrost(FrostModel)/Data/snow depth/Tiff/2003/"
-tifOutPath   <- "F:/worktemp/Permafrost(FrostModel)/Data/GST(OUT)/2003/"
-dataSeq      <- seq(as.Date("2003/1/1"), as.Date("2003/12/31"), "days")
 
+
+#************************************************************************************************
+#
+#   Start here 
+#
+#   setfilepaths
+#
+#   2017.6.7
+#
+#************************************************************************************************
+snowInPath   <- "F:/worktemp/Permafrost(FrostModel)/Data/snow depth/Tiff/2003/"
+tifInPath    <- "F:/worktemp/Permafrost(FrostModel)/Data/MYD2008/"
+tifOutPath   <- "F:/worktemp/Permafrost(FrostModel)/Data/GST(OUT)/2008/"
+dataSeq      <- seq(as.Date("2008/1/1"), as.Date("2010/12/31"), "days")
 #************************************************************************************************
 # process
 #************************************************************************************************
-for(selDate in dataSeq)
+for(i in 1:length(dataSeq))
 {
-
   #************************************************************************************************
   # getFilelist
   #************************************************************************************************
-  selDate    <- dataSeq[1]
+  selDate    <- dataSeq[i]
   year       <- as.numeric(format(selDate, "%Y"))
   doy        <- strftime(selDate, format = "%j")
   yearDoy    <- paste(year,doy,sep='')
@@ -166,33 +165,33 @@ for(selDate in dataSeq)
   # wavelet  
   #************************************************************************************************
   dataVerification <- na.omit(dataVerification)
+
+  if(length(dataVerification$Lon) == 0 ){
+    print(selDate)
+    next
+  }
+  
+  
   # Haar
-  X1.haar <- modwt(dataVerification$LST_D, "haar",3)
-  X2.haar <- modwt(dataVerification$LST_N, "haar",3)
+  XY          <-   (dataVerification$LST_D + dataVerification$LST_N)/2.0
+  XY.haar     <-    modwt(XY, "haar",3)
   
-  X  <- (dataVerification$LST_D + dataVerification$LST_N)/2.0
-  X.haar <- modwt(X, "haar",3)
-  
-  inD <- data.frame(cbind(X1.haar$d1,X1.haar$d2,X1.haar$d3,X1.haar$s3,X2.haar$d1,X2.haar$d2,X2.haar$d3,X2.haar$s3))
-  names(inD) <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3")
-  
-  inD <- data.frame(cbind(X.haar$d1,X.haar$d2,X.haar$d3,X.haar$s3))
+  inD <- data.frame(cbind(XY.haar$d1,XY.haar$d2,XY.haar$d3,XY.haar$s3))
   names(inD) <- c("YD1","YD2","YD3","YS3")
-  
-  
+
   dataVerification¡¡         <- data.frame(dataVerification,inD)
   dataVerification$GST       <- predict(earth.mod, newdata = dataVerification)
   outRes                     <- merge(outData,dataVerification,by.x="ID",by.y="ID",all.x=TRUE)
   #************************************************************************************************
   # OUP RESULT 
   #************************************************************************************************
-  outName <- yearDoy
+  outName <- paste(year,doy,sep='-')
   map.Polygon <- data.frame(outRes[, c("Lon.x", "Lat.x","GST")])
   names(map.Polygon) <- c("Lon","Lat","GST")
   map.Polygon$GST<-as.numeric(as.character(map.Polygon$GST))
   coordinates(map.Polygon) <- ~Lon + Lat
   gridded(map.Polygon) <- TRUE
-  fname<-paste(tifOutPath,outName,"MARS6",".tiff",sep='')
+  fname<-paste(tifOutPath,outName,".tiff",sep='')
   writeGDAL(map.Polygon,fname,drivername="GTiff", type="Float32", options=NULL)
   
 }

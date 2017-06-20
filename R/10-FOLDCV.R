@@ -42,7 +42,7 @@ names(inD) <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3","YD1","YD2","YD3
 InData  ¡¡<- data.frame(InData,inD)
 
 #selVars <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3","YD1","YD2","YD3","YS3","GST","Height","NDVI","Lat","SnowDepth")
-selVars <- c("DD1","DD2","DD3","DS3","ND1","ND2","ND3","NS3","GST","Height","NDVI")
+selVars <- c("YD1","YD2","YD3","YS3","GST","NDVI")
 
 #************************************************************************************************
 # 1  MARS
